@@ -7,6 +7,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.util.Matrix;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,51 +25,60 @@ public class PdfService {
     // ==========================
     // OCR PDF với font Unicode
     // ==========================
-    public byte[] generatePdfWithOcr(List<File> imageFiles) throws IOException, TesseractException {
+    public byte[] generatePdfWithOcr(List<File> imageFiles) throws IOException {
 
         try (PDDocument document = new PDDocument()) {
 
-            // Load font Unicode (Arial)
+            // Font Unicode (Arial)
             PDType0Font font = PDType0Font.load(document, new File("C:\\Windows\\Fonts\\arial.ttf"));
 
             for (File imageFile : imageFiles) {
 
-                String extractedText = ocrService.extractText(imageFile);
+                // OCR text full image
+                String text = ocrService.extractText(imageFile);
 
                 PDPage page = new PDPage(PDRectangle.A4);
                 document.addPage(page);
 
-                PDImageXObject pdImage = PDImageXObject.createFromFile(imageFile.getAbsolutePath(), document);
-                PDPageContentStream contentStream = new PDPageContentStream(document, page);
+                PDPageContentStream cs = new PDPageContentStream(document, page);
 
-                // Resize ảnh để vừa A4
-                float pageWidth = page.getMediaBox().getWidth();
-                float pageHeight = page.getMediaBox().getHeight();
-                float imgW = pdImage.getWidth();
-                float imgH = pdImage.getHeight();
-                float scale = Math.min(pageWidth / imgW, (pageHeight - 100) / imgH);
+                // ===== Draw image on PDF =====
+                PDImageXObject img = PDImageXObject.createFromFile(imageFile.getAbsolutePath(), document);
 
-                contentStream.drawImage(pdImage, 50, pageHeight - imgH * scale - 50,
-                        imgW * scale, imgH * scale);
+                float pw = page.getMediaBox().getWidth();
+                float ph = page.getMediaBox().getHeight();
 
-                // Thêm text OCR Unicode
-//                contentStream.beginText();
-//                contentStream.setFont(font, 10);
-//                contentStream.newLineAtOffset(50, 30);
-//                String preview = extractedText.length() > 200 ? extractedText.substring(0, 200) + "..." : extractedText;
-//                contentStream.showText(preview.replace("\n", " "));
-//                contentStream.endText();
-//
-                contentStream.close();
+                float iw = img.getWidth();
+                float ih = img.getHeight();
+
+                float scale = Math.min(pw / iw, ph / ih);
+
+                float w = iw * scale;
+                float h = ih * scale;
+
+                cs.drawImage(img, (pw - w) / 2, (ph - h) / 2, w, h);
+
+                // ===== Add invisible OCR text layer =====
+                cs.beginText();
+                cs.setFont(font, 10);
+
+                cs.setTextMatrix(new Matrix(0, 0, 0, 0, 10, 10));
+
+                String clean = text.replace("\n", " ");
+                cs.showText(clean);
+                cs.endText();
+
+
+                cs.close();
             }
 
-            // Xuất PDF ra mảng byte
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 document.save(baos);
                 return baos.toByteArray();
             }
         }
     }
+
 
     // ==========================
     // Non-OCR PDF

@@ -34,29 +34,25 @@ public class ImageController {
         List<File> tempFiles = new ArrayList<>();
 
         try {
-            // Lưu ảnh tạm
-            for (MultipartFile file : files) {
-                Path temp = Files.createTempFile("upload-", "-" + file.getOriginalFilename());
-                file.transferTo(temp.toFile());
-                tempFiles.add(temp.toFile());
+            for (MultipartFile f : files) {
+                Path tmp = Files.createTempFile("scan-", f.getOriginalFilename());
+                f.transferTo(tmp.toFile());
+                tempFiles.add(tmp.toFile());
             }
 
-            // Sinh PDF ra byte[]
             byte[] pdfBytes = useOcr
                     ? pdfService.generatePdfWithOcr(tempFiles)
                     : pdfService.generatePdfWithoutOcr(tempFiles);
 
-            // Trả về cho client
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"output.pdf\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=scan.pdf")
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdfBytes);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.status(500).build();
         } finally {
-            // Xóa ảnh tạm
             tempFiles.forEach(File::delete);
         }
     }
