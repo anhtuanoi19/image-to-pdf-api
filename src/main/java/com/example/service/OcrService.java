@@ -12,14 +12,21 @@ public class OcrService {
     private final Tesseract tesseract;
 
     public OcrService() {
-        this.tesseract = new Tesseract();
-        // Đường dẫn đến thư mục tessdata (cần download từ https://github.com/tesseract-ocr/tessdata)
-        // Mặc định sẽ tìm trong /usr/local/share/tessdata (Mac) hoặc C:\Program Files\Tesseract-OCR\tessdata (Windows)
-        // tesseract.setDatapath("/path/to/tessdata");
-        tesseract.setLanguage("eng+vie"); // Hỗ trợ tiếng Anh và tiếng Việt
+        tesseract = new Tesseract();
+
+        tesseract.setDatapath("C:\\Users\\Admin\\Desktop\\Development\\langue-link\\tessdata");  // thư mục chứa eng.traineddata, vie.traineddata
+        tesseract.setLanguage("eng+vie");
+
+        // Tránh lỗi Invalid memory access
+        tesseract.setOcrEngineMode(1);
+        tesseract.setPageSegMode(1);
     }
 
-    public String extractText(File imageFile) throws TesseractException {
-        return tesseract.doOCR(imageFile);
+    public String extractText(File imageFile) {
+        try {
+            return tesseract.doOCR(imageFile);
+        } catch (Exception e) {
+            return ""; // tránh crash PDF
+        }
     }
 }

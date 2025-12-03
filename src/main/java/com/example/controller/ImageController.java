@@ -27,40 +27,36 @@ public class ImageController {
     private PdfService pdfService;
 
     @PostMapping(value = "/convert-to-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Resource> convertImagesToPdf(
+    public ResponseEntity<byte[]> convertImagesToPdf(
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(value = "useOcr", defaultValue = "true") boolean useOcr) {
-        
+
         List<File> tempFiles = new ArrayList<>();
-        
+
         try {
-            // Lưu các file upload vào thư mục tạm
+            // Lưu ảnh tạm
             for (MultipartFile file : files) {
-                Path tempFile = Files.createTempFile("upload-", file.getOriginalFilename());
-                file.transferTo(tempFile.toFile());
-                tempFiles.add(tempFile.toFile());
+                Path temp = Files.createTempFile("upload-", "-" + file.getOriginalFilename());
+                file.transferTo(temp.toFile());
+                tempFiles.add(temp.toFile());
             }
 
-            // Tạo PDF
-            File pdfFile;
-            if (useOcr) {
-                pdfFile = pdfService.generatePdfWithOcr(tempFiles);
-            } else {
-                pdfFile = pdfService.generatePdfWithoutOcr(tempFiles);
-            }
+            // Sinh PDF ra byte[]
+            byte[] pdfBytes = useOcr
+                    ? pdfService.generatePdfWithOcr(tempFiles)
+                    : pdfService.generatePdfWithoutOcr(tempFiles);
 
-            // Trả về file PDF
-            Resource resource = new FileSystemResource(pdfFile);
-            
+            // Trả về cho client
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + pdfFile.getName() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"output.pdf\"")
                     .contentType(MediaType.APPLICATION_PDF)
-                    .body(resource);
+                    .body(pdfBytes);
 
-        } catch (IOException | TesseractException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         } finally {
-            // Xóa các file tạm
+            // Xóa ảnh tạm
             tempFiles.forEach(File::delete);
         }
     }

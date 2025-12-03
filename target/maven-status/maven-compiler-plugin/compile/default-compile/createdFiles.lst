@@ -1,0 +1,6 @@
+com\example\service\PdfService.class
+com\example\service\ImageService.class
+com\example\controller\ImageController.class
+com\example\model\ImageUploadRequest.class
+Application.class
+com\example\service\OcrService.class
